@@ -1,0 +1,1 @@
+To setup edit config.php with your information, and then visit your site.
