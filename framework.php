@@ -6,24 +6,23 @@ Class BlogFramework{
 	public $translatefrom=array(
 		'date',
 		'before',
-		'since',
-		'before',
+		'after',
 		'title',
-		'key',
-		'marked',
-		'search'
+		'keywords',
+		'basic',
+		'by'
 	);
 	public $translateto=array(
 		'ON',
 		'BEFORE',
 		'SINCE',
-		'BEFORE',
 		'SUBJECT',
 		'KEYWORD',
-		'FLAGGED',
-		'BODY'
+		'BODY',
+		'FROM'
 	);
 	public function route(){
+		$headerItems='<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script><link rel="stylesheet" href="jquery.ui.datepicker.css"/>';
 		$baseUrl=$_SERVER['SCRIPT_NAME'];
 		$baseUrl=explode('/', $baseUrl);
 		foreach ($baseUrl as $key=>$part) {
@@ -35,6 +34,10 @@ Class BlogFramework{
 		$path=$this->stripPath();
 		//renumber all the values so we can get them easier.
 		$path=array_values($path);
+		ob_start();
+		require 'search.php';
+		$searchForm=ob_get_contents();
+		ob_end_clean();
 		require 'config.php';
 		if(empty($path)){
 			$finalParams=array();
@@ -82,7 +85,7 @@ Class BlogFramework{
     		    $value=$first;//put the pointer to the start and get the value and its key
     		    $key=key($finalParams);
     		    if(isset($value)&&$value!=''){
-    				$emails=imap_search($inbox,$key.' "'.$value.'"');//filter the emails
+    				$emails=imap_search($inbox,$key.' "'.urldecode($value).'"');//filter the emails
     			}else{
     				$emails=imap_search($inbox,$key);//some things might not need a value.
     			}
@@ -90,10 +93,14 @@ Class BlogFramework{
     			$i++;
     		}
     	}
-    	//$emails=rsort($emails);
+    	if(!is_array($emails)){
+    		require 'themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php';
+    		die;
+    	}
+    	rsort($emails);
 		require 'markdown.php';
 		require 'helper.php';
-		if(sizeof($emails)>1){
+		if(sizeof($emails)>1||isset($_GET['page'])){
 			$finalMail=array();
 			require 'pagination.php';
 			if(!isset($_GET['page'])){
@@ -106,8 +113,15 @@ Class BlogFramework{
 			foreach($list as $mail_number){
 				$mailHeader=imap_fetch_overview($inbox, $mail_number);
 				$body = imap_fetchbody($inbox,$mail_number,2);
-				$body=strip_tags($body,'<a><p><div><b><i><span><br>');
-				//$body=Markdown($body);
+				$struct = imap_fetchstructure($inbox,$mail_number);
+				if(!isset($body)||$body==''){
+					$body = imap_fetchbody($inbox,$mail_number,1);
+				}
+				if($struct->encoding!=0){
+					$body=quoted_printable_decode($body);
+				}
+				$body=strip_tags($body,'<a><p><div><b><i><img><span><br>');
+				$body=Markdown($body);
 				//mark it down!
 				$description=Helper::shortenTextWord($body,DESCRIPTION_LENGTH);
 				$date=strtotime($mailHeader[0]->date);
@@ -135,7 +149,14 @@ Class BlogFramework{
 		}else{	
 			$mail_number=$emails[0];
 			$mailHeader=imap_fetch_overview($inbox, $mail_number);
+			$struct = imap_fetchstructure($inbox,$mail_number);
 			$body = imap_fetchbody($inbox,$mail_number,2);
+			if(!isset($body)||$body==''){
+				$body = imap_fetchbody($inbox,$mail_number,1);
+			}
+			if($struct->encoding!=0){
+				$body=quoted_printable_decode($body);
+			}
 			$body=Markdown($body);
 			//mark it down!
 			$description=Helper::shortenTextWord($body,155);
@@ -167,6 +188,11 @@ Class BlogFramework{
 		$requestURI = explode('/', $_SERVER['REQUEST_URI']);
 		$script = explode('/',$_SERVER['SCRIPT_NAME']);
 		$path=array_diff($requestURI, $script);
+		foreach($path as $key=>$part){
+			if(strpos($part,'?page')){
+				unset($path[$key]);
+			}
+		}
 		//get the path beyond the base app url.
 		return $path;
 	}

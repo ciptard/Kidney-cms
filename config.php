@@ -1,9 +1,6 @@
 <?php
 define('EMAIL_HOST', '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX');
 define('ACTIVE_THEME_HANDLE','default');
-define('EMAIL_USERNAME','emailwritrtest@gmail.com');
-define('EMAIL_PASSWORD','writrtest');
-define('SITE_NAME','Writr');
 define('CHARSET','utf-8');
 define('PAGINATION_NUMBER',10);
 define('DESCRIPTION_LENGTH',250);

@@ -2,9 +2,9 @@
 
 class Helper {
 	
-    public function shortenTextWord($text, $chars=250, $tail='…') {
+    public function shortenTextWord($text, $chars=250, $allowed=null,$tail='…') {
         if (intval($chars)==0) $chars=250;
-        $text=strip_tags($text,'<a>');
+        $text=strip_tags($text,$allowed);
         if (function_exists('mb_substr')) {
             if (mb_strlen($text, CHARSET) > $chars) { 
                 $text=preg_replace('/\s+?(\S+)?$/', '', mb_substr($text, 0, $chars + 1, CHARSET)) . $tail;
@@ -17,6 +17,7 @@ class Helper {
         return $text;       
     }
     public function generateKeywords($string,$title){
+        $string = strip_tags($string);
         $num=KEYWORD_LENGTH;
         $stopwords=STOPWORDS;
         $stopwords=explode(', ', $stopwords);
@@ -25,7 +26,6 @@ class Helper {
         $string = preg_replace('#<\s*style.*>.+<\s*/style\s*\/?>#smUi','', $string);
         $string = preg_replace('/ss+/i', '', $string);
         //get rid of unneccessary stuff
-        $string = strip_tags($string);
         //strip punctuation
         $string = preg_replace('/[^a-zA-Z0-9 ]/', ' ', $string);
         //lower case

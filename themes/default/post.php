@@ -6,11 +6,13 @@
   <meta name="keywords" content="<?php echo $post->keywords;?>">
   <title><?php echo $post->title;?></title>
   <link rel="stylesheet" href="<?php echo $baseUrl.'/themes/'.ACTIVE_THEME_HANDLE;?>/theme.css"/>
+  <?php echo $headerItems;?>
 </head>
 
 <body>
 
   <div id="container">
+    <div class="clearfix">
   <div id="inside">
 
 
@@ -32,7 +34,11 @@ echo $post->body;
 <a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
 </div>
 <hr/>
-<div class="center">Powered by <a href="http://writrapp.org">Writr</a>.</div>
+<div class="center">Powered by Balloon3.</div>
+</div>
+<div id="sidebar">
+  <?php echo $searchForm;?>
+</div>
 </div>
 </div>
 </body>
