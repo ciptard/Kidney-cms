@@ -2,6 +2,7 @@
 define('EMAIL_HOST', '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX');
 define('ACTIVE_THEME_HANDLE','default');
 define('CHARSET','utf-8');
+define('BALLOON_VERSION','.1');
 define('PAGINATION_NUMBER',10);
 define('DESCRIPTION_LENGTH',250);
 define('KEYWORD_LENGTH',10);
