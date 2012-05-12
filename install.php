@@ -58,7 +58,7 @@ if(!isset($message)){
 ?>
 <html>
 <head>
-	<title>Install | Balloon3</title>
+	<title>Install | Kidney Cms</title>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script>
 	<link rel="stylesheet" href="install.css"/>
 </head>
@@ -67,7 +67,7 @@ if(!isset($message)){
 	<?php if(isset($_GET['error'])){
 			 echo '<br/><span class="alert-message error">Please fill out all fields.</span><br/><br/>';
 	}?>
-		<h1 class="center heading">Balloon3</h1>
+		<h1 class="center heading">Kidney Cms</h1>
 		<hr/>
 		<h2 class="center heading">Required Items
 		<a class="hide-show-tests pointer"onclick="$('#tests').fadeIn('fast');$('.hide-show-tests').toggle();">+</a>

@@ -18,10 +18,10 @@
 <p>The post you requested can't be found. <a href="index.php">&laquo; Back Home</a></p>
 </div>
 <div id="sidebar">
-	<?php echo $searchForm;print_r($emails);?>
+	<?php echo $searchForm;?>
 </div>
 <hr/>
-<div class="center">Powered by Balloon3.</div>
+<div class="center">Powered by Kidney Cms.</div>
 </div>
 </body>
 </html>

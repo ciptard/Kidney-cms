@@ -36,7 +36,7 @@ foreach($finalMail as $mail){
 <?php echo $nav;
 if(isset($nav)&&$nav!=''){?>
 <hr/>
-<?php } ?>Powered by Balloon3.</div>
+<?php } ?>Powered by Kidney Cms.</div>
 </div>
 </body>
 </html>

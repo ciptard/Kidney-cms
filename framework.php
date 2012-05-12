@@ -22,12 +22,14 @@ Class BlogFramework{
 		'FROM'
 	);
 	public function route(){
-		$headerItems='<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script><link rel="stylesheet" href="jquery.ui.datepicker.css"/>';
+		require 'special.php';
+		require 'helper.php';
+		$headerItems='<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script><link rel="stylesheet" href="jquery.ui.datepicker.css"/>';// add the css and js we need
 		$baseUrl=$_SERVER['SCRIPT_NAME'];
 		$baseUrl=explode('/', $baseUrl);
 		foreach ($baseUrl as $key=>$part) {
 			if($part=='index.php'){
-				unset($baseUrl[$key]);
+				unset($baseUrl[$key]);//remove index.php from the path
 			}
 		}
 		$baseUrl=implode('/', $baseUrl);
@@ -38,9 +40,10 @@ Class BlogFramework{
 		require 'search.php';
 		$searchForm=ob_get_contents();
 		ob_end_clean();
+		// get the search form
 		require 'config.php';
 		if(empty($path)){
-			$finalParams=array();
+			$finalParams=array();// no search params
 		}elseif($path[0]==$this->search){
 			//we have a special task to do, like sorting by a tag
 			//we'll hand it off to the email parser
@@ -82,13 +85,16 @@ Class BlogFramework{
         	while($count>$i){
         		$first=reset($finalParams);
         		//we go through all our parameters and filter the results.
-    		    $value=$first;//put the pointer to the start and get the value and its key
+    		    $value=strip_tags($first);//put the pointer to the start and get the value and its key
+    		    $value=filter_var($string, FILTER_SANITIZE_STRING);
     		    $key=key($finalParams);
-    		    if(isset($value)&&$value!=''){
-    				$emails=imap_search($inbox,$key.' "'.urldecode($value).'"');//filter the emails
-    			}else{
-    				$emails=imap_search($inbox,$key);//some things might not need a value.
-    			}
+    		    if(in_array($key, $this->translateto)){
+    			    if(isset($value)&&$value!=''){
+    					$emails=imap_search($inbox,$key.' "'.urldecode($value).'"');//filter the emails
+    				}else{
+    					$emails=imap_search($inbox,$key);//some things might not need a value.
+    				}
+    			}//
     			array_shift($finalParams);//pop the param we just used off the array
     			$i++;
     		}
@@ -99,7 +105,6 @@ Class BlogFramework{
     	}
     	rsort($emails);
 		require 'markdown.php';
-		require 'helper.php';
 		if(sizeof($emails)>1||isset($_GET['page'])){
 			$finalMail=array();
 			require 'pagination.php';
@@ -120,13 +125,17 @@ Class BlogFramework{
 				if($struct->encoding!=0){
 					$body=quoted_printable_decode($body);
 				}
+				$title=$mailHeader[0]->subject;
+				if(STRIP_EMAIL==1){
+					$title=str_replace(EMAIL_USERNAME, '', $title);
+					$body=str_replace(EMAIL_USERNAME, '', $body);
+				}
 				$body=strip_tags($body,'<a><p><div><b><i><img><span><br>');
 				$body=Markdown($body);
 				//mark it down!
 				$description=Helper::shortenTextWord($body,DESCRIPTION_LENGTH);
 				$date=strtotime($mailHeader[0]->date);
 				$from=$mailHeader[0]->from;
-				$title=$mailHeader[0]->subject;
 				$pID=$mailHeader[0]->uid;
 				$marked=$mailHeader[0]->flagged;
 				$finalMail[]=array(
@@ -157,10 +166,15 @@ Class BlogFramework{
 			if($struct->encoding!=0){
 				$body=quoted_printable_decode($body);
 			}
+			$title=$mailHeader[0]->subject;
+			if(STRIP_EMAIL==1){
+				$title=str_replace(EMAIL_USERNAME, '', $title);
+				$body=str_replace(EMAIL_USERNAME, '', $body);
+			}
+			$body=strip_tags($body,'<a><p><div><b><i><img><span><br>');
 			$body=Markdown($body);
 			//mark it down!
 			$description=Helper::shortenTextWord($body,155);
-			$title=$mailHeader[0]->subject;
 			$keywords=Helper::generateKeywords($body,$title);
 			$date=$mailHeader[0]->date;
 			$from=$mailHeader[0]->from;
@@ -189,7 +203,7 @@ Class BlogFramework{
 		$script = explode('/',$_SERVER['SCRIPT_NAME']);
 		$path=array_diff($requestURI, $script);
 		foreach($path as $key=>$part){
-			if(strpos($part,'?page')){
+			if(strpos($part,'?page')){//search for the page get
 				unset($path[$key]);
 			}
 		}

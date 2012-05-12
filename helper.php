@@ -48,6 +48,11 @@ class Helper {
         }
         return $str;
     }
+     public function camelcase($string) {
+            $string = ucwords(str_replace(array('_', '-', '/'), ' ', $string));
+            $string = str_replace(' ', '', $string);
+            return $string;         
+    }
 }
 
 ?>

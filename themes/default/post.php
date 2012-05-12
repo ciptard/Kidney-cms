@@ -34,7 +34,7 @@ echo $post->body;
 <a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
 </div>
 <hr/>
-<div class="center">Powered by Balloon3.</div>
+<div class="center">Powered by Kidney Cms.</div>
 </div>
 <div id="sidebar">
   <?php echo $searchForm;?>
