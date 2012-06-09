@@ -22,7 +22,11 @@ Class BlogFramework{
 		'FROM'
 	);
 	public function route(){
-		require 'special.php';
+		/*
+			Start general change code
+			this section deals with setting up various variables taht we will use later
+			sets scripts, base url, interprets the route
+		*/
 		require 'helper.php';
 		$headerItems='<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script><link rel="stylesheet" href="jquery.ui.datepicker.css"/>';// add the css and js we need
 		$baseUrl=$_SERVER['SCRIPT_NAME'];
@@ -41,7 +45,7 @@ Class BlogFramework{
 		$searchForm=ob_get_contents();
 		ob_end_clean();
 		// get the search form
-		require 'config.php';
+		
 		if(empty($path)){
 			$finalParams=array();// no search params
 		}elseif($path[0]==$this->search){
@@ -76,9 +80,122 @@ Class BlogFramework{
 		}
 		$searchName=$this->search;
 		$inbox = imap_open(EMAIL_HOST,EMAIL_USERNAME,EMAIL_PASSWORD) or $this->throwError(imap_last_error());
+		//////////////////////////////////////////////// End General //////////////////////////////////////////////////////////
+		//if(!isset($_COOKIE['checkSettingChange'])){		this doesn't work because I don't know how to use the NOT syntax
+		/*
+			Start settings change code
+			this section deals with emails that try to change a setting
+			you can use 3 command via email- list, set, get 
+			Subject always has to be kidney Settings
+			list shows all the constants except email/pass (list password:pass)
+			set sets any constant (set CONSTANT password:pass)
+			get shows one constant except email/pass (get CONSTANT password:pass)
+		*/
+		if(defined(ALLOWED_EMAILS)){
+			$addresses=explode(',', ALLOWED_EMAILS);
+			$searchString='OR';
+			foreach ($emails as $address) {
+				$searchString.=' FROM "'.trim($address).'"';
+			}
+			$settingsEmail=imap_search($inbox,'SUBJECT "Kidney Settings" '.$searchString);//check if we have and settings emails
+		}else{
+			$settingsEmail=imap_search($inbox,'SUBJECT "Kidney Settings"');
+		}
+		if(!empty($settingsEmail)){
+			//wow! They want to change a setting! How exciting!
+			foreach($settingsEmail as $setting){
+				$body = imap_fetchbody($inbox,$setting,2);
+				$struct = imap_fetchstructure($inbox,$setting);
+				$mailHeader=imap_fetch_overview($inbox, $setting);
+				if(!isset($body)||$body==''){
+					$body = imap_fetchbody($inbox,$setting,1);
+				}
+				if($struct->encoding!=0){
+					$body=quoted_printable_decode($body);
+				}
+				$body=trim($body);
+				$words=explode(' ', $body);
+				$f=$words[0];//get the first word
+				$pass=end(explode('password:', $body));//get the password
+				if($pass!=EMAIL_PASSWORD){
+					$from=$mailHeader[0]->from;
+					mail($from,'Kidney Defined Settings','You supplied an invalid password.');//send it out
+				}else{//don't let em in unless they know the password
+					switch ($f) {//various commands the first word can be
+						case 'list':
+							$messagelist=get_defined_constants(true);// get the list, we need to email the sender
+							$messagelist=$messagelist['user'];
+							unset($messagelist['EMAIL_PASSWORD']);
+							unset($messagelist['EMAIL_USERNAME']);
+							$message='';
+							foreach($messagelist as $key=>$value){
+								$message.=$key.' = '.$value."\n";
+							}
+							$from=$mailHeader[0]->from;
+
+							mail($from,'Kidney Defined Settings',$message);//send it out
+							break;
+						case 'set':
+							$body=str_replace($f, '', $body);
+							$body=str_replace('password:', '', $body);
+							$body=trim(str_replace($pass, '', $body));
+							$key=explode('=', $body);
+							if(defined($key[0])){
+								$contents=file_get_contents('config.php');
+								$contents=preg_replace('#(.*)define\(.'.trim($key[0]).'.,..*.\)\;(.*)#','$1define(\''.trim($key[0]).'\','.trim($key[1]).');$2', $contents);
+								//regex... i probably wont be able to read this in a minute, much less a year...
+								// so ive sorta given up commenting it
+								file_put_contents('config.php', $contents);
+							}else{
+								file_put_contents('config.php', "define('".trim($key[0])."','".trim($key[1])."');\n", FILE_APPEND);//add the define
+							}
+							break;
+						case 'get':
+							$body=trim(str_replace($f, '', $body));
+							$body=str_replace('password:', '', $body);
+							$body=trim(str_replace($pass, '', $body));
+							if(defined($body)){
+								if($body=='EMAIL_PASSWORD'||$body=='EMAIL_USERNAME'){
+									$message='Sorry, but you can\'t get your password or email address from the get or list command. Please open the file up via ftp to find these. You can change them with the set command via email.';//no hacking
+								}else{
+									$message=$body.' = '.constant($body);	
+								}
+							}else{
+								$message='We couldn\'t find that constant. Try emailing the command "list" to get all the available constants and their values.';//give em some help
+							}
+							$from=$mailHeader[0]->from;
+							mail($from,'Kidney Defined Constant',$message);//send it out
+							break;
+					}
+				}
+				imap_delete($inbox, $setting);
+			}
+			imap_expunge($inbox);
+		}
+		//////////////////////////////////////////////// End Settings Change //////////////////////////////////////////////////////////
+		//}
+		/*
+			Start mail code
+			this section gets the mail and translates the params to a search string
+		*/
         if(empty($finalParams)){//if we aren't given params we'll just get everything.
-        	$emails=imap_search($inbox,'All');
+        	if(defined('ALLOWED_EMAILS')){
+        		if(strpos(ALLOWED_EMAILS, ',')){
+					$addresses=explode(',', ALLOWED_EMAILS);
+					$searchString='';
+					foreach ($emails as $address) {
+						$searchString.=' FROM "'.$address.'"';
+					}
+				}else{
+					$searchString=' FROM "'.ALLOWED_EMAILS.'"';
+				}
+				$emails=imap_search($inbox,$searchString);
+			}else{
+				$emails=imap_search($inbox,'ALL');
+			}
+        	
         }else{
+        	$searchString='';
         	$count=count($finalParams);
         	//if we are given params we'll search them
         	$i=0;
@@ -89,18 +206,31 @@ Class BlogFramework{
     		    $value=filter_var($string, FILTER_SANITIZE_STRING);
     		    $key=key($finalParams);
     		    if(in_array($key, $this->translateto)){
+
     			    if(isset($value)&&$value!=''){
-    					$emails=imap_search($inbox,$key.' "'.urldecode($value).'"');//filter the emails
+    					$searchString.=' '.$key.' "'.urldecode($value).'"';//filter the emails
     				}else{
-    					$emails=imap_search($inbox,$key);//some things might not need a value.
+    					$searchString.=' '.$key;
     				}
     			}//
     			array_shift($finalParams);//pop the param we just used off the array
     			$i++;
     		}
     	}
+    	$emails=imap_search($inbox, $searchString);
+    	//////////////////////////////////////////////// End Email get //////////////////////////////////////////////////////////
+    	/*
+			Start theme code
+			this section gets the array of messages and translates them into the frontend
+			gets the theme, feeds it the data
+			also does a bit of logic to determine the template we want, and translate the message into markdown
+		*/
     	if(!is_array($emails)){
-    		require 'themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php';
+    		$fourohfourpath='themes/default/page_not_found.php'
+    		if(file_exists('themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php')){
+    			$fourohfourpath='themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php';
+    		}
+    		require $fourohfourpath;
     		die;
     	}
     	rsort($emails);
@@ -130,12 +260,14 @@ Class BlogFramework{
 					$title=str_replace(EMAIL_USERNAME, '', $title);
 					$body=str_replace(EMAIL_USERNAME, '', $body);
 				}
+				$title=str_replace(EMAIL_PASSWORD, '', $title);
+				$body=str_replace(EMAIL_PASSWORD, '', $body);
 				$body=strip_tags($body,'<a><p><div><b><i><img><span><br>');
 				$body=Markdown($body);
 				//mark it down!
 				$description=Helper::shortenTextWord($body,DESCRIPTION_LENGTH);
 				$date=strtotime($mailHeader[0]->date);
-				$from=$mailHeader[0]->from;
+				$from=strip_tags($mailHeader[0]->from);
 				$pID=$mailHeader[0]->uid;
 				$marked=$mailHeader[0]->flagged;
 				$finalMail[]=array(
@@ -197,6 +329,7 @@ Class BlogFramework{
 			require 'themes/'.ACTIVE_THEME_HANDLE.'/post.php';
 			//otherwise load a single post
 		}
+		//////////////////////////////////////////////// End theme interpreter //////////////////////////////////////////////////////////
 	}
 	public function stripPath(){
 		$requestURI = explode('/', $_SERVER['REQUEST_URI']);

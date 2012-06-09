@@ -5,7 +5,7 @@ function check_imap(){
 	imap_open('{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX', 'emailwritrtest@gmail.com', 'writrtest');
 	$c=ob_get_contents();
 	ob_end_clean();
-	if(isset($c)){
+	if(isset($c)&&$c!=''){
 		return false;
 	}
 	return true;
@@ -20,7 +20,7 @@ if(!empty($_POST)){
 		}
 	}
 	if(!isset($error)){
-		$configuration .= "define('EMAIL_USERNAME', '" . addslashes($_POST['user']) . "');\n";
+		$configuration .= "\ndefine('EMAIL_USERNAME', '" . addslashes($_POST['user']) . "');\n";
 		$configuration .= "define('EMAIL_PASSWORD', '" . addslashes($_POST['pass']) . "');\n";
 		$configuration .= "define('SITE_NAME', '" . addslashes($_POST['site']) . "');\n";
 		//update the config file
