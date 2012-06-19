@@ -1,4 +1,5 @@
 <?php
+defined('KIDNEY_EXEC') or die('Not running kidney.');
 class Pagination{
 	var $length;
 	var $list;

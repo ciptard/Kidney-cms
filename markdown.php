@@ -1,4 +1,5 @@
 <?php
+defined('KIDNEY_EXEC') or die('Not running kidney.');
 #
 # Markdown  -  A text-to-HTML conversion tool for web writers
 #

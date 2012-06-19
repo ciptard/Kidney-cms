@@ -1,5 +1,6 @@
 <?php 
 require 'config.php';
+defined('KIDNEY_EXEC') or die('Not running kidney.');
 function check_imap(){
 	ob_start();
 	imap_open('{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX', 'emailwritrtest@gmail.com', 'writrtest');

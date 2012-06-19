@@ -1,7 +1,6 @@
 <?php
+defined('KIDNEY_EXEC') or die('Not running kidney.');
 Class BlogFramework{
-	public $controllers='controllers';
-	public $view='view';
 	public $search='search';
 	public $translatefrom=array(
 		'date',
@@ -24,10 +23,11 @@ Class BlogFramework{
 	public function route(){
 		/*
 			Start general change code
-			this section deals with setting up various variables taht we will use later
+			this section deals with setting up various variables that we will use later
 			sets scripts, base url, interprets the route
 		*/
 		require 'helper.php';
+		require 'events.php';
 		$headerItems='<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script><link rel="stylesheet" href="jquery.ui.datepicker.css"/>';// add the css and js we need
 		$baseUrl=$_SERVER['SCRIPT_NAME'];
 		$baseUrl=explode('/', $baseUrl);
@@ -40,10 +40,12 @@ Class BlogFramework{
 		$path=$this->stripPath();
 		//renumber all the values so we can get them easier.
 		$path=array_values($path);
+		$path=Events::run('path_determined',$path);
 		ob_start();
 		require 'search.php';
 		$searchForm=ob_get_contents();
 		ob_end_clean();
+		$searchForm=Events::run('search_form',$searchForm);
 		// get the search form
 		
 		if(empty($path)){
@@ -78,8 +80,10 @@ Class BlogFramework{
 				$finalParams=array();
 			}
 		}
+		$finalParams=Events::run('params',$finalParams,$path);
 		$searchName=$this->search;
 		$inbox = imap_open(EMAIL_HOST,EMAIL_USERNAME,EMAIL_PASSWORD) or $this->throwError(imap_last_error());
+		$inbox=Events::run('imap_open',$inbox);
 		//////////////////////////////////////////////// End General //////////////////////////////////////////////////////////
 		//if(!isset($_COOKIE['checkSettingChange'])){		this doesn't work because I don't know how to use the NOT syntax
 		/*
@@ -102,6 +106,7 @@ Class BlogFramework{
 			$settingsEmail=imap_search($inbox,'SUBJECT "Kidney Settings"');
 		}
 		if(!empty($settingsEmail)){
+			$settingsEmail=Events::run('settings_change',$settingsEmail);
 			//wow! They want to change a setting! How exciting!
 			foreach($settingsEmail as $setting){
 				$body = imap_fetchbody($inbox,$setting,2);
@@ -123,6 +128,7 @@ Class BlogFramework{
 				}else{//don't let em in unless they know the password
 					switch ($f) {//various commands the first word can be
 						case 'list':
+							$setting=Events::run('list',$setting);
 							$messagelist=get_defined_constants(true);// get the list, we need to email the sender
 							$messagelist=$messagelist['user'];
 							unset($messagelist['EMAIL_PASSWORD']);
@@ -136,6 +142,7 @@ Class BlogFramework{
 							mail($from,'Kidney Defined Settings',$message);//send it out
 							break;
 						case 'set':
+							$setting=Events::run('set',$setting);
 							$body=str_replace($f, '', $body);
 							$body=str_replace('password:', '', $body);
 							$body=trim(str_replace($pass, '', $body));
@@ -151,6 +158,7 @@ Class BlogFramework{
 							}
 							break;
 						case 'get':
+							$setting=Events::run('get',$setting);
 							$body=trim(str_replace($f, '', $body));
 							$body=str_replace('password:', '', $body);
 							$body=trim(str_replace($pass, '', $body));
@@ -190,8 +198,6 @@ Class BlogFramework{
 					$searchString=' FROM "'.ALLOWED_EMAILS.'"';
 				}
 				$emails=imap_search($inbox,$searchString);
-			}else{
-				$emails=imap_search($inbox,'ALL');
 			}
         	
         }else{
@@ -217,16 +223,19 @@ Class BlogFramework{
     			$i++;
     		}
     	}
+    	$searchString=Events::run('search',$searchString);
     	$emails=imap_search($inbox, $searchString);
-    	//////////////////////////////////////////////// End Email get //////////////////////////////////////////////////////////
+    	$emails=Events::run('emails_gotten',$emails);
+    	//////////////////////////////////////////////// End Email Get //////////////////////////////////////////////////////////
     	/*
 			Start theme code
 			this section gets the array of messages and translates them into the frontend
 			gets the theme, feeds it the data
 			also does a bit of logic to determine the template we want, and translate the message into markdown
 		*/
-    	if(!is_array($emails)){
-    		$fourohfourpath='themes/default/page_not_found.php'
+    	if(!is_array($emails)||sizeof($emails)<1){
+    		Events::runSilent('page_not_found',$path);
+    		$fourohfourpath='themes/default/page_not_found.php';
     		if(file_exists('themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php')){
     			$fourohfourpath='themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php';
     		}
@@ -244,6 +253,7 @@ Class BlogFramework{
 			$up = new Pagination($emails,$_GET['page'],'index.php','page');
 			$list=$up->getList();
 			$nav=$up->generateLinks();
+			$list=Events::run('pagination_listed',$list,$nav);
 			//get our pagination stuff
 			foreach($list as $mail_number){
 				$mailHeader=imap_fetch_overview($inbox, $mail_number);
@@ -281,12 +291,9 @@ Class BlogFramework{
 				);
 				//get the data into a format that makes more sense for designers
 			}
+			$finalMail=Events::run('final_list',$finalMail);
 			require 'themes/'.ACTIVE_THEME_HANDLE.'/list.php';
 			//if we have a list  we load the list template
-		}elseif(sizeof($emails)<1){
-			require 'themes/'.ACTIVE_THEME_HANDLE.'/page_not_found.php';
-			//no items yet load page not found.
-			//we don't have to give em any more info
 		}else{	
 			$mail_number=$emails[0];
 			$mailHeader=imap_fetch_overview($inbox, $mail_number);
@@ -322,7 +329,9 @@ Class BlogFramework{
 				'keywords'=>$keywords,
 				'marked'=>$marked
 			);
+			$finalMail=Events::run('final',$finalMail);
 			//get the data into a format that makes more sense for designers
+			//we want it in an object and nto just a variable so that nothing gets overriden by accident
 			$post=(object) $finalMail;
 			//we turn it into an object so it looks prettier when you're making the theme. 
 			//harder for designers to screw up the code too, which is key
@@ -334,7 +343,7 @@ Class BlogFramework{
 	public function stripPath(){
 		$requestURI = explode('/', $_SERVER['REQUEST_URI']);
 		$script = explode('/',$_SERVER['SCRIPT_NAME']);
-		$path=array_diff($requestURI, $script);
+		$path=array_diff($requestURI, $script);//get the diff (whats before REQUEST_URI)
 		foreach($path as $key=>$part){
 			if(strpos($part,'?page')){//search for the page get
 				unset($path[$key]);
@@ -344,7 +353,8 @@ Class BlogFramework{
 		return $path;
 	}
 	public function throwError($error){
+		$error=Events::run('error',$error);
   		//we can't directly throw an exception, so we call it indirectly
-  		throw new Exception('Couldn\'t connect to gmail: '.$error);
+  		throw new Exception('Couldn\'t connect to email: '.$error);
   	}
 }

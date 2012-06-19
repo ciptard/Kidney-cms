@@ -1,4 +1,5 @@
 <?php
+define('KIDNEY_EXEC','1');
 define('EMAIL_HOST', '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX');
 define('ACTIVE_THEME_HANDLE','default');
 define('CHARSET','utf-8');

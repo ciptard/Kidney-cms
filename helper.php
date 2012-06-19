@@ -1,5 +1,5 @@
 <?php           
-
+defined('KIDNEY_EXEC') or die('Not running kidney.');
 class Helper {
 	
     public function shortenTextWord($text, $chars=250, $allowed=null,$tail='…') {

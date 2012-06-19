@@ -1,3 +1,4 @@
+<?php defined('KIDNEY_EXEC') or die('Not running kidney.');?>
 <!DOCTYPE html>
 <html>
 <head>

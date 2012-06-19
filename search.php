@@ -1,3 +1,4 @@
+<?php defined('KIDNEY_EXEC') or die('Not running kidney.');?>
 Add search term:
 <select id="search" name="search"> 
         <option value="">----</option>
